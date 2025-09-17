@@ -1,28 +1,85 @@
-# Fast multi-stage Dockerfile using pre-built base image
-# Uses ghcr.io/bashfulrobot/kong-docs-base for dependencies
+# Multi-stage Dockerfile for Kong Developer Documentation
+# Ubuntu 24.04 with latest packages and full git context
 
-FROM ghcr.io/bashfulrobot/kong-docs-base:latest AS builder
+FROM ubuntu:24.04 AS builder
 
-# Set working directory (already exists in base image)
+# Set environment variables to avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Update and install base dependencies
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    curl \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add PPAs for latest software (ready for future use)
+# Example: RUN add-apt-repository ppa:example/ppa -y
+
+# Install Node.js from NodeSource (includes npm)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && apt-get install -y nodejs
+
+# Install other dependencies (excluding npm since NodeSource nodejs includes it)
+RUN apt-get update && apt-get install -y \
+    ruby-full \
+    ruby-dev \
+    build-essential \
+    git \
+    python3 \
+    python3-pip \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libsqlite3-dev \
+    sqlite3 \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify npm is available and upgrade it
+RUN npm --version && npm install -g npm@latest
+
+# Verify versions (helpful for debugging)
+RUN echo "=== Software Versions ===" && \
+    ruby --version && \
+    node --version && \
+    npm --version && \
+    git --version && \
+    echo "========================="
+
+# Install global npm tools
+RUN npm install -g netlify-cli@16.5.1
+
+# Set working directory
 WORKDIR /app
-
-# Configure git safe directory
-RUN git config --global --add safe.directory /app
 
 # Copy dependency files first for better Docker layer caching
 COPY Gemfile Gemfile.lock ./
 COPY package.json package-lock.json ./
 COPY .ruby-version ./
 
-# Install Ruby dependencies (bundler already configured in base)
-RUN bundle config set --local path 'vendor/bundle' && \
-    bundle install --without development test
+# Install Ruby dependencies
+RUN gem install bundler && \
+    bundle config set --local deployment 'false' && \
+    bundle config set --local path 'vendor/bundle' && \
+    bundle install --jobs $(nproc) --retry 3
 
-# Install Node dependencies
-RUN npm install --omit=dev --no-audit --no-fund
+# Install Node dependencies (with latest npm that supports overrides)
+RUN npm install
 
 # Copy the entire project INCLUDING .git folder
 COPY . .
+
+# Configure git (required for submodules)
+RUN git config --global user.email "docker@example.com" && \
+    git config --global user.name "Docker Build" && \
+    git config --global --add safe.directory /app
 
 # Initialize submodules with full git context
 RUN git submodule update --init --recursive --depth 1 || \
