@@ -1,0 +1,102 @@
+# Kong Developer Documentation - Docker Tasks
+# Run with: just <command>
+
+# Default recipe - show available commands
+default:
+    @just --list
+
+# Build and run with docker-compose (recommended)
+up:
+    docker-compose up
+
+# Build and run in background
+up-detached:
+    docker-compose up -d
+
+# Stop docker-compose services
+down:
+    docker-compose down
+
+# Build the Docker image locally
+build:
+    docker build -t kong-docs-offline .
+
+# Build without cache (clean build)
+build-clean:
+    docker build -t kong-docs-offline . --no-cache
+
+# Run the locally built image
+run:
+    docker run -d -p 8080:80 --name kong-docs kong-docs-offline
+
+# Stop and remove the container
+stop:
+    docker stop kong-docs || true
+    docker rm kong-docs || true
+
+# Pull and run the latest pre-built image
+pull-and-run:
+    docker pull ghcr.io/bashfulrobot/developer.konghq.com:latest
+    docker run -d -p 8080:80 --name kong-docs-prebuilt ghcr.io/bashfulrobot/developer.konghq.com:latest
+
+# Stop and remove the pre-built container
+stop-prebuilt:
+    docker stop kong-docs-prebuilt || true
+    docker rm kong-docs-prebuilt || true
+
+# View container logs
+logs:
+    docker logs kong-docs
+
+# View pre-built container logs
+logs-prebuilt:
+    docker logs kong-docs-prebuilt
+
+# Check container health
+health:
+    curl -f http://localhost:8080/health || echo "Health check failed"
+
+# Open documentation in browser
+open:
+    open http://localhost:8080 || xdg-open http://localhost:8080 || echo "Visit http://localhost:8080"
+
+# Show running containers
+ps:
+    docker ps --filter "name=kong-docs"
+
+# Clean up all Kong docs containers and images
+clean:
+    docker stop kong-docs kong-docs-prebuilt || true
+    docker rm kong-docs kong-docs-prebuilt || true
+    docker rmi kong-docs-offline || true
+    docker-compose down --rmi local || true
+
+# Show disk usage of Docker images
+du:
+    docker images --filter "reference=*kong*" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+# Follow logs in real-time
+tail:
+    docker logs -f kong-docs
+
+# Follow pre-built logs in real-time
+tail-prebuilt:
+    docker logs -f kong-docs-prebuilt
+
+# Restart the docker-compose services
+restart:
+    docker-compose restart
+
+# Pull latest changes and rebuild (for development)
+dev-update:
+    git pull
+    docker-compose down
+    docker-compose build --no-cache
+    docker-compose up -d
+
+# Run with custom port
+run-port PORT:
+    docker run -d -p {{PORT}}:80 --name kong-docs-{{PORT}} kong-docs-offline
+
+# Quick development cycle: build and run
+dev: build run open
