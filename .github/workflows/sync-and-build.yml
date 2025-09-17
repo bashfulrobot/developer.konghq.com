@@ -153,12 +153,8 @@ jobs:
         run: |
           echo "## 🚀 Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry:** 
-${{ env.REGISTRY }}
-"
-          echo "**Image:** 
-${{ env.IMAGE_NAME }}
-"
+          echo "**Registry:** `${{ env.REGISTRY }}`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** `${{ env.IMAGE_NAME }}`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Tags:" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
