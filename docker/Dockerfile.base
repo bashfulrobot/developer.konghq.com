@@ -1,0 +1,90 @@
+# Base image for Kong Developer Documentation builds
+# Contains all dependencies pre-installed for faster builds
+# Built monthly or when dependencies change
+
+FROM ubuntu:24.04
+
+# Set environment variables to avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Create version label for tracking
+LABEL org.opencontainers.image.title="Kong Docs Base Image"
+LABEL org.opencontainers.image.description="Pre-built base image with all dependencies for Kong Developer Documentation"
+LABEL org.opencontainers.image.source="https://github.com/bashfulrobot/developer.konghq.com"
+
+# Update and install base dependencies
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    curl \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configure apt for faster, minimal installs
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
+    echo 'APT::Install-Suggests "false";' > /etc/apt/apt.conf.d/99-no-suggests && \
+    echo 'APT::Install-Recommends "false";' > /etc/apt/apt.conf.d/99-no-recommends
+
+# Install Node.js from NodeSource (includes npm)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && apt-get install -y nodejs
+
+# Install other dependencies (excluding npm since NodeSource nodejs includes it)
+RUN apt-get update && apt-get install -y \
+    ruby-full \
+    ruby-dev \
+    build-essential \
+    git \
+    python3 \
+    python3-pip \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libsqlite3-dev \
+    sqlite3 \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify npm is available and upgrade it
+RUN npm --version && npm install -g npm@latest
+
+# Install global npm tools that are commonly used
+RUN npm install -g netlify-cli@16.5.1
+
+# Install bundler and configure for optimal performance
+RUN gem install bundler && \
+    bundle config set --global jobs $(nproc) && \
+    bundle config set --global retry 3 && \
+    bundle config set --global deployment 'false'
+
+# Pre-create common directories and set permissions
+RUN mkdir -p /app && \
+    chmod 755 /app
+
+# Configure git defaults (useful for any git operations)
+RUN git config --global user.email "docker@example.com" && \
+    git config --global user.name "Docker Build" && \
+    git config --global init.defaultBranch main
+
+# Verify all installations and show versions
+RUN echo "=== Base Image Software Versions ===" && \
+    echo "Ubuntu: $(lsb_release -rs)" && \
+    echo "Ruby: $(ruby --version)" && \
+    echo "Node.js: $(node --version)" && \
+    echo "npm: $(npm --version)" && \
+    echo "Bundler: $(bundle --version)" && \
+    echo "Git: $(git --version)" && \
+    echo "Python: $(python3 --version)" && \
+    echo "====================================="
+
+# Set working directory
+WORKDIR /app
+
+# Add metadata
+LABEL org.opencontainers.image.created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+LABEL version="1.0.0"
