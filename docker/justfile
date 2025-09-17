@@ -73,7 +73,7 @@ clean:
 
 # Show disk usage of Docker images
 du:
-    docker images --filter "reference=*kong*" --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+    docker images --filter "reference=*kong*" --format "table {{{{.Repository}}}}\t{{{{.Tag}}}}\t{{{{.Size}}}}"
 
 # Follow logs in real-time
 tail:
@@ -100,3 +100,92 @@ run-port PORT:
 
 # Quick development cycle: build and run
 dev: build run open
+
+# Sync with upstream Kong repository (preserves local changes)
+sync-upstream:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "🔄 Syncing with upstream Kong repository..."
+    
+    # Ensure we're in the right directory
+    cd "$(git rev-parse --show-toplevel)"
+    
+    # Add upstream remote if it doesn't exist
+    if ! git remote get-url upstream >/dev/null 2>&1; then
+        echo "➕ Adding upstream remote..."
+        git remote add upstream https://github.com/Kong/developer.konghq.com.git
+    fi
+    
+    # Fetch latest upstream changes
+    echo "📥 Fetching upstream changes..."
+    git fetch upstream
+    
+    # Check current branch
+    CURRENT_BRANCH=$(git branch --show-current)
+    if [ "$CURRENT_BRANCH" != "main" ]; then
+        echo "⚠️  Warning: Not on main branch (currently on $CURRENT_BRANCH)"
+        echo "   Switch to main branch first: git checkout main"
+        exit 1
+    fi
+    
+    # Get commit hashes for comparison
+    BEFORE_SYNC=$(git rev-parse HEAD)
+    UPSTREAM_HEAD=$(git rev-parse upstream/main)
+    
+    # Check if we're already up to date
+    if [ "$BEFORE_SYNC" = "$UPSTREAM_HEAD" ]; then
+        echo "✅ Already up to date with upstream"
+        exit 0
+    fi
+    
+    # Show what will be merged
+    echo "📋 Changes from upstream:"
+    git log --oneline --graph HEAD..upstream/main | head -10
+    
+    # Attempt merge
+    echo "🔀 Merging upstream changes..."
+    if git merge upstream/main --no-ff --no-edit; then
+        AFTER_SYNC=$(git rev-parse HEAD)
+        if [ "$BEFORE_SYNC" != "$AFTER_SYNC" ]; then
+            echo "✅ Successfully merged upstream changes"
+            echo "🚀 Pushing to origin..."
+            git push origin main
+            echo "✨ Sync complete!"
+        else
+            echo "ℹ️  No new changes from upstream"
+        fi
+    else
+        echo "❌ Merge conflict detected!"
+        echo "   Manual intervention required:"
+        echo "   1. Resolve conflicts in your editor"
+        echo "   2. Run: git add ."
+        echo "   3. Run: git commit"
+        echo "   4. Run: git push origin main"
+        exit 1
+    fi
+
+# Check git status and show upstream comparison
+git-status:
+    #!/usr/bin/env bash
+    echo "📊 Git Status Report"
+    echo "==================="
+    
+    # Show current status
+    echo "🌿 Current branch and status:"
+    git status --short --branch
+    echo
+    
+    # Check if upstream remote exists
+    if git remote get-url upstream >/dev/null 2>&1; then
+        git fetch upstream --quiet
+        echo "📈 Commits ahead/behind upstream:"
+        git rev-list --left-right --count HEAD...upstream/main | \
+        awk '{print "   Ahead: " $1 " commits, Behind: " $2 " commits"}'
+        echo
+        
+        echo "📋 Recent upstream commits (last 5):"
+        git log --oneline upstream/main -5 --format="   %h %s"
+    else
+        echo "⚠️  Upstream remote not configured"
+        echo "   Run 'just sync-upstream' to add it"
+    fi
