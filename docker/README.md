@@ -8,8 +8,8 @@ Run the Kong Developer Documentation offline using Docker.
 
 ```bash
 # Pull and run the latest image
-docker pull ghcr.io/bashfulrobot/developer.konghq.com:latest
-docker run -d -p 8080:80 ghcr.io/bashfulrobot/developer.konghq.com:latest
+docker pull ghcr.io/bashfulrobot/kong-docs:latest
+docker run -d -p 8080:80 ghcr.io/bashfulrobot/kong-docs:latest
 ```
 
 Visit [http://localhost:8080](http://localhost:8080) to view the documentation.
@@ -45,7 +45,7 @@ To use a different port:
 
 ```bash
 # Use port 3000 instead of 8080
-docker run -d -p 3000:80 ghcr.io/bashfulrobot/developer.konghq.com:latest
+docker run -d -p 3000:80 ghcr.io/bashfulrobot/kong-docs:latest
 ```
 
 ## Stopping the Container

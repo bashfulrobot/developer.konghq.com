@@ -36,8 +36,8 @@ stop:
 
 # Pull and run the latest pre-built image
 pull-and-run:
-    docker pull ghcr.io/bashfulrobot/developer.konghq.com:latest
-    docker run -d -p 8080:80 --name kong-docs-prebuilt ghcr.io/bashfulrobot/developer.konghq.com:latest
+    docker pull ghcr.io/bashfulrobot/kong-docs:latest
+    docker run -d -p 8080:80 --name kong-docs-prebuilt ghcr.io/bashfulrobot/kong-docs:latest
 
 # Stop and remove the pre-built container
 stop-prebuilt:

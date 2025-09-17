@@ -29,10 +29,10 @@ Instead of building locally, you can use the automatically built images:
 
 ```bash
 # Pull from GitHub Container Registry
-docker pull ghcr.io/bashfulrobot/developer.konghq.com:latest
+docker pull ghcr.io/bashfulrobot/kong-docs:latest
 
 # Run the documentation
-docker run -d -p 8080:80 ghcr.io/bashfulrobot/developer.konghq.com:latest
+docker run -d -p 8080:80 ghcr.io/bashfulrobot/kong-docs:latest
 ```
 
 Or use in Docker Compose:
@@ -40,7 +40,7 @@ Or use in Docker Compose:
 version: '3.8'
 services:
   docs:
-    image: ghcr.io/bashfulrobot/developer.konghq.com:latest
+    image: ghcr.io/bashfulrobot/kong-docs:latest
     ports:
       - "8080:80"
 ```
