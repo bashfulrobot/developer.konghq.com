@@ -109,7 +109,8 @@ RUN echo "=== Base Image Software Versions ===" && \
     echo "Bundler: $(bundle --version)" && \
     echo "Git: $(git --version)" && \
     echo "Python: $(python3 --version)" && \
-    echo "Dependencies pre-installed: $(npm list --depth=0 | wc -l) npm packages" && \
+    echo "Ruby gems installed: $(bundle list | wc -l) gems" && \
+    echo "Frontmatter validator: $(cd tools/frontmatter-validator && npm list --depth=0 | grep -c '@' || echo 'installed')" && \
     echo "====================================="
 
 # Set working directory
