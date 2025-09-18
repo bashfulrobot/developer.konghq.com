@@ -7,7 +7,12 @@ on:
   workflow_dispatch: # Allow manual triggering
   push:
     branches: [ main ]
-  # Trigger on any changes to sync with upstream and rebuild docs
+    paths-ignore:
+      - '.github/workflows/**'
+      - '.github/**'
+      - 'README.md'
+      - '*.md'
+  # Trigger only on content changes, not infrastructure/workflow changes
 
 env:
   REGISTRY: ghcr.io
