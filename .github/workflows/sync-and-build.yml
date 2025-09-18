@@ -4,21 +4,8 @@ on:
   schedule:
     # Nightly at 10 PM PST (6 AM UTC)  
     - cron: '0 6 * * *'
-  workflow_dispatch: # Allow manual triggering
-  workflow_run:
-    workflows: ["Build Base Image"]
-    types: 
-      - completed
-    branches: [ main ]
-  push:
-    branches: [ main ]
-    paths-ignore:
-      - '.github/workflows/**'
-      - '.github/**'
-      - 'README.md'
-      - '*.md'
-      - 'docker/*.md'
-  # Trigger on: schedule, manual, base image updates, or content changes
+  workflow_dispatch: # Allow manual triggering only
+  # Trigger on: nightly schedule or manual trigger only
 
 env:
   REGISTRY: ghcr.io
@@ -73,44 +60,8 @@ jobs:
             echo "No changes from upstream"
           fi
 
-  check-image:
-    runs-on: ubuntu-latest
-    outputs:
-      image-exists: ${{ steps.check.outputs.exists }}
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate image tag
-        id: meta
-        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5.5.1
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,prefix={{branch}}-
-
-      - name: Check if image exists
-        id: check
-        run: |
-          if docker manifest inspect ${{ steps.meta.outputs.tags }} >/dev/null 2>&1; then
-            echo "Image ${{ steps.meta.outputs.tags }} exists."
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "Image ${{ steps.meta.outputs.tags }} does not exist."
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
   build-and-publish:
-    needs: [sync-upstream, check-image]
-    if: needs.check-image.outputs.image-exists == 'false' || (github.event.workflow_run.conclusion == 'success')
+    needs: [sync-upstream]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -162,18 +113,18 @@ jobs:
         run: |
           echo "## 🚀 Docker Image Published" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry:** `${{ env.REGISTRY }}`" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** `${{ env.IMAGE_NAME }}`" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`${{ env.REGISTRY }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Tags:" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage:" >> $GITHUB_STEP_SUMMARY
-          echo "```bash" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "docker run -p 8080:80 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
-          echo "```" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   cleanup:
     needs: [sync-upstream, build-and-publish]
