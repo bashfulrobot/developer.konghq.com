@@ -5,6 +5,11 @@ on:
     # Nightly at 10 PM PST (6 AM UTC)  
     - cron: '0 6 * * *'
   workflow_dispatch: # Allow manual triggering
+  workflow_run:
+    workflows: ["Build Base Image"]
+    types: 
+      - completed
+    branches: [ main ]
   push:
     branches: [ main ]
     paths-ignore:
@@ -13,7 +18,7 @@ on:
       - 'README.md'
       - '*.md'
       - 'docker/*.md'
-  # Trigger only on content changes, not infrastructure/workflow changes
+  # Trigger on: schedule, manual, base image updates, or content changes
 
 env:
   REGISTRY: ghcr.io
@@ -105,7 +110,7 @@ jobs:
 
   build-and-publish:
     needs: [sync-upstream, check-image]
-    if: needs.check-image.outputs.image-exists == 'false'
+    if: needs.check-image.outputs.image-exists == 'false' || (github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: read
