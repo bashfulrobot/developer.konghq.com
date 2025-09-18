@@ -1,15 +1,7 @@
 name: Build Base Image
 
 on:
-  schedule:
-    # Monthly on the 1st at 2 AM UTC
-    - cron: '0 2 1 * *'
-  workflow_dispatch: # Allow manual triggering
-  push:
-    branches: [ main ]
-    paths: 
-      - 'docker/Dockerfile.base'
-      - '.github/workflows/build-base-image.yml'
+  workflow_dispatch: # Manual triggering only
 
 env:
   REGISTRY: ghcr.io
