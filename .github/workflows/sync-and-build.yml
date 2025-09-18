@@ -12,6 +12,7 @@ on:
       - '.github/**'
       - 'README.md'
       - '*.md'
+      - 'docker/*.md'
   # Trigger only on content changes, not infrastructure/workflow changes
 
 env:
