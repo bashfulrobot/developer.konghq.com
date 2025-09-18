@@ -57,8 +57,15 @@ FROM nginx:alpine AS production
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Copy the built site output (Jekyll builds to dist/)
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy the built site output (check dist/ first, fallback to _site/, then app/)
+RUN --mount=from=builder,source=/app,target=/build \
+    if [ -d "/build/dist" ] && [ "$(ls -A /build/dist 2>/dev/null)" ]; then \
+        echo "Using dist/ directory" && cp -r /build/dist/* /usr/share/nginx/html/; \
+    elif [ -d "/build/_site" ] && [ "$(ls -A /build/_site 2>/dev/null)" ]; then \
+        echo "Using _site/ directory as fallback" && cp -r /build/_site/* /usr/share/nginx/html/; \
+    else \
+        echo "No built output found, using app/ source as last resort" && cp -r /build/app/* /usr/share/nginx/html/; \
+    fi
 
 # Create nginx configuration for documentation
 COPY <<EOF /etc/nginx/conf.d/default.conf
