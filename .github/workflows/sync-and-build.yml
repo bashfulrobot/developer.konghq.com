@@ -2,14 +2,12 @@ name: Sync Fork and Build Docker Image
 
 on:
   schedule:
-    # Daily at 10 PM PST (6 AM UTC)
+    # Nightly at 10 PM PST (6 AM UTC)  
     - cron: '0 6 * * *'
   workflow_dispatch: # Allow manual triggering
   push:
     branches: [ main ]
-    paths: 
-      - 'docker/**'
-      - '.github/workflows/**'
+  # Trigger on any changes to sync with upstream and rebuild docs
 
 env:
   REGISTRY: ghcr.io
