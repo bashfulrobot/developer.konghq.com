@@ -1,80 +1,75 @@
-# Fast multi-stage Dockerfile using pre-built base image
-# Uses ghcr.io/bashfulrobot/kong-docs-base for dependencies
+# Simple single-stage Dockerfile for local development
+# Uses Ubuntu base with all dependencies and follows Makefile commands exactly
 
-FROM ghcr.io/bashfulrobot/kong-docs-base:latest AS builder
+FROM ubuntu:24.04
 
-# Set working directory (already exists in base image)
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    curl \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    apt-transport-https \
+    git \
+    build-essential \
+    ruby-full \
+    ruby-dev \
+    python3 \
+    python3-pip \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libsqlite3-dev \
+    sqlite3 \
+    pkg-config \
+    nginx \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20.x
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && apt-get install -y nodejs
+
+# Install global npm packages and bundler
+RUN npm install -g npm@latest && \
+    gem install bundler
+
+# Set working directory
 WORKDIR /app
 
-# Configure git safe directory
-RUN git config --global --add safe.directory /app
-
-# Copy the entire project INCLUDING .git folder
-# Dependencies are already installed in base image
+# Copy the entire project
 COPY . .
 
-# Check if dependencies need updating (fail fast if package files changed)
-RUN if ! cmp -s package.json package.json.bak 2>/dev/null || \
-       ! cmp -s package-lock.json package-lock.json.bak 2>/dev/null || \
-       ! cmp -s Gemfile Gemfile.bak 2>/dev/null || \
-       ! cmp -s Gemfile.lock Gemfile.lock.bak 2>/dev/null; then \
-       echo "Dependencies changed since base image build. Consider rebuilding base image."; \
-       echo "Installing updated dependencies..."; \
-       npm ci --no-audit --no-fund; \
-       bundle install --without development test; \
-    else \
-       echo "Dependencies match base image, skipping installation."; \
-    fi
+# Configure git
+RUN git config --global user.email "docker@example.com" && \
+    git config --global user.name "Docker Build" && \
+    git config --global --add safe.directory /app
 
-# Initialize submodules with full git context
-RUN git submodule update --init --recursive --depth 1 || \
-    echo "Some submodules failed to initialize, continuing..."
+# Run Makefile commands exactly as defined
+# 1. Install prerequisites (Netlify CLI - needed for some build processes)
+RUN make install-prerequisites || echo "Prerequisites install had issues, continuing..."
 
-# Install frontmatter validator dependencies (overwritten by COPY . .)
-RUN cd tools/frontmatter-validator && npm ci
+# 2. Install all dependencies using official Makefile
+RUN make install
 
-# Run frontmatter validation
-RUN cd tools/frontmatter-validator && npm run validate || \
-    echo "Frontmatter validation had issues, continuing..."
+# 3. Build the site using official Makefile
+RUN make build
 
-# Build the site using the proper build script
-RUN chmod +x exe/build && \
-    JEKYLL_ENV=production ./exe/build || \
-    echo "Production build failed, trying development build..." && \
-    JEKYLL_ENV=development bundle exec jekyll build --config jekyll.yml,jekyll-dev.yml --verbose || \
-    echo "Development build also failed, checking what we have..."
-
-# Check what was actually built
-RUN echo "=== Build Output Check ===" && \
-    ls -la dist/ 2>/dev/null || echo "No dist/ directory" && \
-    ls -la _site/ 2>/dev/null || echo "No _site/ directory" && \
-    find . -name "index.html" -type f 2>/dev/null | head -5 || echo "No HTML files found" && \
-    echo "========================="
-
-# Production stage - minimal nginx container
-FROM nginx:alpine AS production
-
-# Install curl for health checks
-RUN apk add --no-cache curl
-
-# Copy the built site output (check dist/ first, fallback to _site/, then app/)
-RUN --mount=from=builder,source=/app,target=/build \
-    if [ -d "/build/dist" ] && [ "$(ls -A /build/dist 2>/dev/null)" ]; then \
-        echo "Using dist/ directory" && cp -r /build/dist/* /usr/share/nginx/html/; \
-    elif [ -d "/build/_site" ] && [ "$(ls -A /build/_site 2>/dev/null)" ]; then \
-        echo "Using _site/ directory as fallback" && cp -r /build/_site/* /usr/share/nginx/html/; \
-    else \
-        echo "No built output found, using app/ source as last resort" && cp -r /build/app/* /usr/share/nginx/html/; \
-    fi
-
-# Create nginx configuration for documentation
-COPY <<EOF /etc/nginx/conf.d/default.conf
+# Configure nginx to serve the built site
+RUN rm -f /etc/nginx/sites-enabled/default
+COPY <<EOF /etc/nginx/sites-available/kong-docs
 server {
     listen 80;
     server_name localhost;
     
-    root /usr/share/nginx/html;
-    index index.html index.md _index.md README.md;
+    root /app/dist;
+    index index.html;
     
     # Enable gzip compression
     gzip on;
@@ -89,8 +84,7 @@ server {
         application/json
         application/xml+rss
         application/atom+xml
-        image/svg+xml
-        text/markdown;
+        image/svg+xml;
     
     # Cache static assets
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
@@ -98,40 +92,23 @@ server {
         add_header Cache-Control "public, immutable";
     }
     
-    # Handle pretty URLs for Jekyll-generated content
+    # Handle pretty URLs
     location / {
-        try_files \$uri \$uri/ \$uri/index.html \$uri/index.md \$uri/_index.md @fallback;
-    }
-    
-    # Fallback to directory browsing if Jekyll build didn't work
-    location @fallback {
-        autoindex on;
-        autoindex_exact_size off;
-        autoindex_localtime on;
-        autoindex_format html;
-    }
-    
-    # Health check endpoint
-    location /health {
-        access_log off;
-        return 200 "Kong Docs Offline - healthy\n";
-        add_header Content-Type text/plain;
+        try_files \$uri \$uri/ \$uri/index.html =404;
     }
     
     # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
     
     # Remove server version
     server_tokens off;
 }
 EOF
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/health || exit 1
+# Enable the site
+RUN ln -s /etc/nginx/sites-available/kong-docs /etc/nginx/sites-enabled/
 
 # Expose port
 EXPOSE 80
