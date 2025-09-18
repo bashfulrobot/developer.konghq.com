@@ -30,7 +30,10 @@ RUN if ! cmp -s package.json package.json.bak 2>/dev/null || \
 RUN git submodule update --init --recursive --depth 1 || \
     echo "Some submodules failed to initialize, continuing..."
 
-# Run frontmatter validation (dependencies already installed in base)
+# Install frontmatter validator dependencies (overwritten by COPY . .)
+RUN cd tools/frontmatter-validator && npm ci
+
+# Run frontmatter validation
 RUN cd tools/frontmatter-validator && npm run validate || \
     echo "Frontmatter validation had issues, continuing..."
 
