@@ -5,6 +5,20 @@ on:
     # Weekly on Sundays at 2 AM UTC
     - cron: '0 2 * * 0'
   workflow_dispatch: # Allow manual triggering
+  push:
+    branches: [ main ]
+    paths:
+      # Core dependency files that affect base image
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Gemfile'
+      - 'Gemfile.lock'
+      - '.ruby-version'
+      # Frontmatter validator dependencies (pre-installed in base)
+      - 'tools/frontmatter-validator/package.json'
+      - 'tools/frontmatter-validator/package-lock.json'
+      # Base Dockerfile itself
+      - 'docker/Dockerfile.base'
 
 env:
   REGISTRY: ghcr.io
