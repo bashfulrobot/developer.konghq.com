@@ -57,8 +57,8 @@ FROM nginx:alpine AS production
 # Install curl for health checks
 RUN apk add --no-cache curl
 
-# Copy the app directory as our base content
-COPY --from=builder /app/app /usr/share/nginx/html
+# Copy the built site output (Jekyll builds to dist/)
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Create nginx configuration for documentation
 COPY <<EOF /etc/nginx/conf.d/default.conf
