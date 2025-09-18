@@ -71,6 +71,34 @@ RUN git config --global user.email "docker@example.com" && \
     git config --global user.name "Docker Build" && \
     git config --global init.defaultBranch main
 
+# Pre-install common dependencies to speed up daily builds
+# Copy dependency files to pre-install packages
+COPY package.json package-lock.json ./
+COPY Gemfile Gemfile.lock ./
+COPY .ruby-version ./
+
+# Pre-install Ruby dependencies
+RUN bundle config set --local path 'vendor/bundle' && \
+    bundle install --without development test
+
+# Pre-install Node dependencies (including dev dependencies for build tools)
+RUN npm ci --no-audit --no-fund
+
+# Create backup copies of dependency files for comparison in main build
+RUN cp package.json package.json.bak && \
+    cp package-lock.json package-lock.json.bak && \
+    cp Gemfile Gemfile.bak && \
+    cp Gemfile.lock Gemfile.lock.bak
+
+# Pre-install frontmatter validator dependencies
+RUN mkdir -p tools/frontmatter-validator
+COPY tools/frontmatter-validator/package.json tools/frontmatter-validator/package-lock.json tools/frontmatter-validator/
+RUN cd tools/frontmatter-validator && npm ci
+
+# Initialize git submodules structure (will be updated in main image)
+RUN git init && \
+    git config --global --add safe.directory /app
+
 # Verify all installations and show versions
 RUN echo "=== Base Image Software Versions ===" && \
     echo "Ubuntu: $(lsb_release -rs)" && \
@@ -80,6 +108,7 @@ RUN echo "=== Base Image Software Versions ===" && \
     echo "Bundler: $(bundle --version)" && \
     echo "Git: $(git --version)" && \
     echo "Python: $(python3 --version)" && \
+    echo "Dependencies pre-installed: $(npm list --depth=0 | wc -l) npm packages" && \
     echo "====================================="
 
 # Set working directory

@@ -9,29 +9,28 @@ WORKDIR /app
 # Configure git safe directory
 RUN git config --global --add safe.directory /app
 
-# Copy dependency files first for better Docker layer caching
-COPY Gemfile Gemfile.lock ./
-COPY package.json package-lock.json ./
-COPY .ruby-version ./
-
-# Install Ruby dependencies (bundler already configured in base)
-RUN bundle config set --local path 'vendor/bundle' && \
-    bundle install --without development test
-
-# Install Node dependencies
-RUN npm install --omit=dev --no-audit --no-fund
-
 # Copy the entire project INCLUDING .git folder
+# Dependencies are already installed in base image
 COPY . .
+
+# Check if dependencies need updating (fail fast if package files changed)
+RUN if ! cmp -s package.json package.json.bak 2>/dev/null || \
+       ! cmp -s package-lock.json package-lock.json.bak 2>/dev/null || \
+       ! cmp -s Gemfile Gemfile.bak 2>/dev/null || \
+       ! cmp -s Gemfile.lock Gemfile.lock.bak 2>/dev/null; then \
+       echo "Dependencies changed since base image build. Consider rebuilding base image."; \
+       echo "Installing updated dependencies..."; \
+       npm ci --no-audit --no-fund; \
+       bundle install --without development test; \
+    else \
+       echo "Dependencies match base image, skipping installation."; \
+    fi
 
 # Initialize submodules with full git context
 RUN git submodule update --init --recursive --depth 1 || \
     echo "Some submodules failed to initialize, continuing..."
 
-# Install frontmatter validator dependencies
-RUN cd tools/frontmatter-validator && npm install
-
-# Run frontmatter validation (skip if fails)
+# Run frontmatter validation (dependencies already installed in base)
 RUN cd tools/frontmatter-validator && npm run validate || \
     echo "Frontmatter validation had issues, continuing..."
 
