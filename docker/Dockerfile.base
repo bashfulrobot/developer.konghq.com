@@ -50,8 +50,8 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# Verify npm is available and upgrade it
-RUN npm --version && npm install -g npm@latest
+# Verify npm is available and upgrade it to latest for better lockfile compatibility
+RUN npm --version && npm install -g npm@latest && npm --version
 
 # Install global npm tools that are commonly used
 RUN npm install -g netlify-cli@16.5.1
@@ -81,10 +81,11 @@ COPY .ruby-version ./
 RUN bundle config set --local path 'vendor/bundle' && \
     bundle install --without development test
 
-# Pre-install Node dependencies (including dev dependencies for build tools)
-RUN npm ci --no-audit --no-fund
+# Note: Skipping Node dependency pre-installation due to npm tracker issues
+# Will install in main build instead with better error handling
+# This still provides significant speedup for Ruby dependencies
 
-# Create backup copies of dependency files for comparison in main build
+# Create backup copies of dependency files for tracking in main build
 RUN cp package.json package.json.bak && \
     cp package-lock.json package-lock.json.bak && \
     cp Gemfile Gemfile.bak && \
