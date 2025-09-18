@@ -1,11 +1,12 @@
 # Building Kong Developer Documentation Docker Image
 
-This guide covers building the Docker image locally from the Dockerfile.
+This guide covers building the Docker image locally using a simplified single-stage approach.
 
 ## Prerequisites
 
-- Docker (version 20.10 or later)
+- Docker (version 20.10 or later)  
 - Docker Compose (optional, for easier orchestration)
+- 4GB+ available RAM (for building dependencies)
 
 ## Quick Start
 
@@ -40,12 +41,13 @@ docker rm kong-docs
 
 ## Dockerfile Explained
 
-### `Dockerfile`
-- **Base**: Ubuntu 24.04 with latest packages
-- **Features**: Full Jekyll build with git context and submodules
-- **Node.js**: Latest LTS (20.x) from NodeSource
-- **Output**: Complete documentation with styling and navigation
-- **Build**: Multi-stage build for optimized production images
+### Simplified Single-Stage Build
+- **Base**: Ubuntu 24.04 with all dependencies
+- **Process**: Follows official Makefile exactly (`make install` → `make build`)
+- **Node.js**: 20.x LTS from NodeSource with npm latest
+- **Ruby**: Latest stable with bundler
+- **Output**: Complete static documentation served via nginx
+- **Benefits**: Simple, matches development workflow, offline-ready
 
 ## Configuration
 

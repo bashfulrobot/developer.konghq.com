@@ -1,23 +1,28 @@
 # GitHub Actions Setup
 
-This repository includes automated workflows for maintaining an up-to-date Docker image of the Kong Developer Documentation.
+This repository includes a simplified automated workflow for maintaining an up-to-date Docker image of the Kong Developer Documentation.
 
 ## Workflow Overview
 
 ### Sync Fork and Build Docker Image
 
-**Schedule:** Daily at 10 PM PST (6 AM UTC)
+**Schedule:** Nightly at 10 PM PST (6 AM UTC)
 
 **What it does:**
 1. **Syncs your fork** with the upstream Kong repository
-2. **Builds Docker image** if there are changes or when manually triggered
+2. **Builds single-stage Docker image** using official Makefile process
 3. **Publishes** to GitHub Container Registry (GHCR)
 4. **Cleans up** old container versions
 
 **Triggers:**
-- **Scheduled**: Daily at 10 PM PST
-- **Manual**: Via GitHub Actions UI (workflow_dispatch)
-- **Push**: When docker files or workflows are modified
+- **Scheduled**: Nightly at 10 PM PST (6 AM UTC)
+- **Manual**: Via GitHub Actions UI (workflow_dispatch) only
+
+**Simplified Design:**
+- Single workflow file (`sync-and-build.yml`)
+- No base image complexity - everything in one Docker build
+- Uses official `make install` and `make build` commands
+- Only runs when scheduled or manually triggered
 
 ## Automated Workflows
 

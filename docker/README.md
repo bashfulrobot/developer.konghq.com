@@ -1,6 +1,6 @@
 # Kong Developer Documentation - Docker
 
-Run the Kong Developer Documentation offline using Docker.
+Run the Kong Developer Documentation offline using Docker with a simplified single-stage build.
 
 ## Quick Start
 
@@ -29,9 +29,10 @@ Visit [http://localhost:8080](http://localhost:8080) to view the documentation.
 ## What You Get
 
 - **Complete Kong documentation** with full styling and navigation
-- **Offline access** - no internet required after initial download
+- **Offline access** - no internet required after initial download  
 - **Fast performance** - optimized nginx serving
-- **Auto-updating** - pre-built images are updated daily
+- **Simplified build** - single-stage Docker using official Makefile process
+- **Auto-updating** - pre-built images are updated nightly
 
 ## Available Images
 
